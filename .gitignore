@@ -2,8 +2,6 @@
 stock_env/
 
 # Model files — optional, they're large
-stock_model.keras
-scaler_params.npy
 prediction_plot.png
 
 # Python cache

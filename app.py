@@ -7,6 +7,20 @@ import pandas as pd
 import plotly.graph_objects as go
 import datetime
 
+@st.cache_resource(show_spinner=False)
+def get_model():
+    return load_model("stock_model.keras")
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_stock_data(ticker, period):
+    df = yf.download(ticker, period=period, progress=False)
+    info = {}
+    try:
+        info = yf.Ticker(ticker).info
+    except Exception:
+        pass
+    return df, info
+
 st.set_page_config(
     page_title="NEXUS · Stock AI",
     page_icon="◈",
@@ -180,25 +194,20 @@ if not predict_btn:
     st.stop()
 
 # ── PREDICTION ────────────────────────────────────────
-with st.spinner("Running LSTM model..."):
+with st.spinner(""):
     try:
-        model = load_model("stock_model.keras")
+        model = get_model()
     except Exception:
         st.error("No trained model found. Run `python train.py` first.")
         st.stop()
 
-    df = yf.download(ticker, period=period, progress=False)
+    df, info = get_stock_data(ticker, period)
     if df.empty:
         st.error(f"No data found for **{ticker}**.")
         st.stop()
 
-    info = {}
-    try:
-        info = yf.Ticker(ticker).info
-    except Exception:
-        pass
-
     closes = df["Close"].values.reshape(-1, 1)
+    closes = closes.astype(float)
     dates  = df.index
 
     scaler = MinMaxScaler()
@@ -389,7 +398,7 @@ st.markdown(f"""
 if "Volume" in df.columns:
     with st.expander("◈  VOLUME HISTORY · LAST 120 DAYS"):
         vol_colors = [
-            "#00e5a0" if float(c) >= float(o) else "#ff4566"
+            "#00e5a0" if float(np.squeeze(c)) >= float(np.squeeze(o)) else "#ff4566"
             for c, o in zip(df["Close"].values[-120:], df["Open"].values[-120:])
         ]
         fig3 = go.Figure(go.Bar(
